@@ -1,0 +1,28 @@
+{
+  "name": "mail-scaper",
+  "version": "1.0.0",
+  "description": "Crawl email from a specific website",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/phong-et/email-scraper.git"
+  },
+  "keywords": [
+    "email",
+    "scaper"
+  ],
+  "author": "phong-et",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/phong-et/email-scraper/issues"
+  },
+  "homepage": "https://github.com/phong-et/email-scraper#readme",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.2",
+    "request": "^2.88.0",
+    "request-promise": "^4.2.2"
+  }
+}
