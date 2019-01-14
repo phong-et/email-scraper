@@ -13,6 +13,7 @@ yp.js
 yp.zip
 ncdn.js
 msc.cfg
+yp/*
 # Editor directories and files
 .idea
 .vscode
