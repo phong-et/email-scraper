@@ -7,11 +7,6 @@ let rp = require('request-promise'),
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:24.0) Gecko/20100101 Firefox/24.0',
   }
 async function writeFile(fileName, content) {
-  // await fs.writeFile(fileName, content, function(err) {
-  //   if (err) return log(err)
-  //   var statusText = 'write file > ' + fileName + ' success'
-  //   log(statusText)
-  // })
   return new Promise((resolve, reject) => {
     fs.writeFile(fileName, content, function(err) {
         if (err) reject(err)
@@ -33,10 +28,10 @@ async function fetchCategoriesSpellNext(page, spell, province, form) {
     transform: function(body) {
       return cheerio.load(body)
     },
-  }
-  log('Get categories next page :%s', url)
+  }  
   await rp(options)
-    .then($ => {
+    .then(async $ => {
+      log('Get categories next page :%s', url)
       categoriesSpellNext = getCategories($)
       // log('categoriesSpellNext.length:%s', categoriesSpellNext.length)
       // log(categoriesSpellNext)
@@ -59,10 +54,10 @@ async function fetchCategoriesSpell(page, spell, province) {
     transform: function(body) {
       return cheerio.load(body)
     },
-  }
-  log('Get categories first page :%s', url)
+  }  
   await rp(options)
     .then(async $ => {
+      log('Get categories first page :%s', url)
       var form = {
         __EVENTTARGET: 'dskhuchexuat$ctl28$lbtLast',
         __EVENTARGUMENT: '',
@@ -75,11 +70,13 @@ async function fetchCategoriesSpell(page, spell, province) {
       categoriesSpell = categoriesSpell.concat(getCategories($))
       // log('categoriesSpell.length:%s', categoriesSpell.length)
       // log(categoriesSpell)
+
       // have next page categories
       if ($('#dskhuchexuat_ctl28_lbtLast').length > 0) {
         var categoriesSpellNext = await fetchCategoriesSpellNext(page, spell, province, form)
         // log('categoriesSpellNext.length:%s', categoriesSpellNext.length)
         // log(categoriesSpellNext)
+        
         categoriesSpell = categoriesSpell.concat(categoriesSpellNext)        
       }
     })
@@ -117,23 +114,17 @@ function getCategories($) {
 }
 
 let page = ypCfg.ypCategoriesUrl,
-  province = ypCfg.province,
-  // Demo get one
-  // spell = ypCfg.az[1],
-  // fetchCategoriesSpell(page, spell, province).then(categories => {
-  //   writeFile('yp/' + spell + '.txt', JSON.stringify(categories).toString())
-  //   log(categories.length)
-  //   log(categories)
-  // })
+  province = ypCfg.province
 
-  az = ypCfg.az
-// await az.forEach(async spell => {
-//     let categories = await fetchCategoriesSpell(page, spell, province)
-//     writeFile('yp/' + spell + '.txt', JSON.stringify(categories).toString())
-//     log(categories.length)
-//     log(categories)
+// ============ Modern method ============
+// ypCfg.az.forEach(async spell => {
+//   let categories = await fetchCategoriesSpell(page, spell, province)
+//   log(categories.length)
+//   log(categories)
 // })
-var i = 0
+
+// ============ Classic Method ============
+var i = 0, az = ypCfg.az
 async function start() {
   if (i == az.length) {
     log('Done ALL ')
