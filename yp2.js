@@ -16,6 +16,16 @@ async function writeFile(fileName, content) {
     })
   })
 }
+async function appendFile(fileName, content) {
+  return new Promise((resolve, reject) => {
+    fs.writeFile(fileName, content, function(err) {
+      if (err) reject(err)
+      var statusText = 'append file > ' + fileName + ' success'
+      log(statusText)
+      resolve(statusText)
+    })
+  })
+}
 
 async function fetchCategoriesSpellNext(page, spell, province, form) {
   var categoriesSpellNext = []
@@ -102,12 +112,50 @@ function getCategories($) {
 }
 
 // ========= FETCH TRADE ========== //
+async function fetchTradeByCategory(page, category, province) {
+  var url = page
+  log(category)
+  const $ = await rp({
+      url: url,
+      form: {
+        ClassId: category.id,
+        Province: province,
+      },
+      headers: headers,
+      transform: function(body) {
+        return cheerio.load(body)
+      },
+  })
+  getMails($, category.name)
+}
+async function getMails($, fileName) {
+  var domMail = $('a.tooltip-example-2')
+  log('domMail.length:%s', domMail.length)
+  if (domMail.length > 0) {
+    var mails = []
+    for (var i = 0; i < domMail.length; i++) {
+      try {
+        var href = domMail.eq(i).attr('href')
+        if (href != '' && href != undefined)
+          if (href.indexOf('mailto:') == 0)
+            //log(href.substr(7));
+            mails.push(href.substr(7))
+      } catch (err) {
+        //log(err)
+      }
+    }
+    fileName += '.txt'
+    await appendFile('yp/' + fileName, '\r\n' + mails.toString().replace(/,/g, '\r\n'))
+  } else log('mail not found')
+}
+
 
 // ============ Modern forEach method  ============
 let page = ypCfg.ypCategoriesUrl,
   province = ypCfg.province
 ypCfg.az.forEach(async spell => {
   let categories = await fetchCategoriesSpell(page, spell, province)
+  fetchTradeByCategory(ypCfg.ypTradeUrl,categories[0],2)
   log(categories.length)
   log(categories)
 })
