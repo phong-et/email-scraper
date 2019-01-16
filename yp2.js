@@ -29,16 +29,12 @@ async function fetchCategoriesSpellNext(page, spell, province, form) {
       return cheerio.load(body)
     },
   }
-  log('Get categories next page :%s', url)
-  await rp(options)
-    .then(async $ => {
-      categoriesSpellNext = getCategories($)
-      // log('categoriesSpellNext.length:%s', categoriesSpellNext.length)
-      // log(categoriesSpellNext)
-    })
-    .catch(function(err) {
-      log(err)
-    })
+  // await log('Get categories next page :%s', url)
+  const $ = await rp(options)
+  categoriesSpellNext = getCategories($)
+  // log('categoriesSpellNext.length:%s', categoriesSpellNext.length)
+  // log(categoriesSpellNext)
+
   return categoriesSpellNext
 }
 async function fetchCategoriesSpell(page, spell, province) {
@@ -51,34 +47,29 @@ async function fetchCategoriesSpell(page, spell, province) {
       return cheerio.load(body)
     },
   }
-  log('Get categories first page :%s', url)
-  await rp(options)
-    .then(async $ => {
-      var form = {
-        __EVENTTARGET: 'dskhuchexuat$ctl28$lbtLast',
-        __EVENTARGUMENT: '',
-        __VIEWSTATE: $('#__VIEWSTATE').val(),
-        __VIEWSTATEGENERATOR: $('#__VIEWSTATEGENERATOR').val(),
-      }
-      // log(form)
-      // log(getCategories($))
+  //await log('Get categories first page :%s', url)
+  const $ = await rp(options)
+  var form = {
+    __EVENTTARGET: 'dskhuchexuat$ctl28$lbtLast',
+    __EVENTARGUMENT: '',
+    __VIEWSTATE: $('#__VIEWSTATE').val(),
+    __VIEWSTATEGENERATOR: $('#__VIEWSTATEGENERATOR').val(),
+  }
+  // log(form)
+  // log(getCategories($))
 
-      categoriesSpell = categoriesSpell.concat(getCategories($))
-      // log('categoriesSpell.length:%s', categoriesSpell.length)
-      // log(categoriesSpell)
+  categoriesSpell = categoriesSpell.concat(getCategories($))
+  // log('categoriesSpell.length:%s', categoriesSpell.length)
+  // log(categoriesSpell)
 
-      // have next page categories
-      if ($('#dskhuchexuat_ctl28_lbtLast').length > 0) {
-        var categoriesSpellNext = await fetchCategoriesSpellNext(page, spell, province, form)
-        // log('categoriesSpellNext.length:%s', categoriesSpellNext.length)
-        // log(categoriesSpellNext)
+  // have next page categories
+  if ($('#dskhuchexuat_ctl28_lbtLast').length > 0) {
+    var categoriesSpellNext = await fetchCategoriesSpellNext(page, spell, province, form)
+    // log('categoriesSpellNext.length:%s', categoriesSpellNext.length)
+    // log(categoriesSpellNext)
+    categoriesSpell = categoriesSpell.concat(categoriesSpellNext)
+  } 
 
-        categoriesSpell = categoriesSpell.concat(categoriesSpellNext)
-      }
-    })
-    .catch(function(err) {
-      log(err)
-    })
   await writeFile('yp/' + spell + '.txt', JSON.stringify(categoriesSpell).toString())
   return categoriesSpell
 }
@@ -113,25 +104,24 @@ function getCategories($) {
 // ========= FETCH TRADE ========== //
 
 // ============ Modern forEach method  ============
-// let page = ypCfg.ypCategoriesUrl,
-//   province = ypCfg.province,
-// ypCfg.az.forEach(async spell => {
-//   let categories = await fetchCategoriesSpell(page, spell, province)
-//   log(categories.length)
-//   log(categories)
-// })
+let page = ypCfg.ypCategoriesUrl,
+  province = ypCfg.province
+ypCfg.az.forEach(async spell => {
+  let categories = await fetchCategoriesSpell(page, spell, province)
+  log(categories.length)
+  log(categories)
+})
 
-  // ============ Modern Promise.all method  ============
-  (async function() {
-    await Promise.all(
-      ypCfg.az.map(async az => {
-        let categories = await fetchCategoriesSpell(ypCfg.ypCategoriesUrl, az, ypCfg.province)
-        log(categories.length)
-        log(categories)
-      })
-    )
-  }
-)()
+// ============ Modern Promise.all method  ============
+// (async function() {
+//   await Promise.all(
+//     ypCfg.az.map(async az => {
+//       let categories = await fetchCategoriesSpell(ypCfg.ypCategoriesUrl, az, ypCfg.province)
+//       log(categories.length)
+//       log(categories)
+//     })
+//   )
+// })()
 
 // ============ Classic Method ============
 // let page = ypCfg.ypCategoriesUrl,
