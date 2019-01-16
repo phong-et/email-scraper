@@ -78,7 +78,7 @@ async function fetchCategoriesSpell(page, spell, province) {
     // log('categoriesSpellNext.length:%s', categoriesSpellNext.length)
     // log(categoriesSpellNext)
     categoriesSpell = categoriesSpell.concat(categoriesSpellNext)
-  } 
+  }
 
   await writeFile('yp/' + spell + '.txt', JSON.stringify(categoriesSpell).toString())
   return categoriesSpell
@@ -114,17 +114,16 @@ function getCategories($) {
 // ========= FETCH TRADE ========== //
 async function fetchTradeByCategory(page, category, province) {
   var url = page
-  log(category)
   const $ = await rp({
-      url: url,
-      form: {
-        ClassId: category.id,
-        Province: province,
-      },
-      headers: headers,
-      transform: function(body) {
-        return cheerio.load(body)
-      },
+    url: url,
+    form: {
+      ClassId: category.id,
+      Province: province,
+    },
+    headers: headers,
+    transform: function(body) {
+      return cheerio.load(body)
+    },
   })
   getMails($, category.name)
 }
@@ -149,15 +148,16 @@ async function getMails($, fileName) {
   } else log('mail not found')
 }
 
-
 // ============ Modern forEach method  ============
 let page = ypCfg.ypCategoriesUrl,
   province = ypCfg.province
 ypCfg.az.forEach(async spell => {
   let categories = await fetchCategoriesSpell(page, spell, province)
-  fetchTradeByCategory(ypCfg.ypTradeUrl,categories[0],2)
   log(categories.length)
   log(categories)
+  categories.forEach(async category => {
+    await fetchTradeByCategory(ypCfg.ypTradeUrl, category, 2)
+  })  
 })
 
 // ============ Modern Promise.all method  ============
