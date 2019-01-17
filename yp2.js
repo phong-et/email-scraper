@@ -114,18 +114,104 @@ function getCategories($) {
 // ========= FETCH TRADE ========== //
 async function fetchTradeByCategory(page, category, province) {
   var url = page
-  const $ = await rp({
+  const response = await rp({
     url: url,
+    method: 'POST',
     form: {
       ClassId: category.id,
       Province: province,
     },
     headers: headers,
-    transform: function(body) {
-      return cheerio.load(body)
+    resolveWithFullResponse: true,
+    transform: (body, res) => {
+      return {$: cheerio.load(body), cookies: res.headers['set-cookie']}
     },
   })
-  getMails($, category.name)
+  getMails(response.$, category.name)
+  fetchTradeByCategoryNext(response, category, url)
+}
+var isUseCookie = false
+var jar
+async function fetchTradeByCategoryNext(response, category, url) {
+  let $ = response.$
+  var __EVENTTARGET = hasNextPage($)
+  if (__EVENTTARGET != false) {
+    var form = {
+      __EVENTTARGET: __EVENTTARGET,
+      __EVENTARGUMENT: '',
+      __VIEWSTATE: $('#__VIEWSTATE').val(),
+      __VIEWSTATEGENERATOR: $('#__VIEWSTATEGENERATOR').val(),
+      Keywords: splitCategoryName(category.name),
+      Province: 'TP. HỒ CHÍ MINH',
+      giatribody: $('#giatribody').val(),
+      ScrollTop: '',
+      __dnnVariable: {__scdoff: 1},
+    }
+    //log(form);
+    if (isUseCookie == false) {
+      jar = rp.jar()
+      response.cookies.forEach(e => {
+        e.split(';').forEach(cookie => {
+          jar.setCookie(rp.cookie(cookie.trim()), url)
+        })
+      })
+      //log(jar);
+      isUseCookie = true
+    }
+    const r = await rp({
+      url: url,
+      method: 'POST',
+      jar: jar,
+      form: {
+        ClassId: category.id,
+        Province: province,
+      },
+      headers: headers,
+      resolveWithFullResponse: true,
+      transform: (body, res) => {
+        return {$: cheerio.load(body), cookies: res.headers['set-cookie']}
+      },
+    })
+    log('isUseCookie:%s', isUseCookie)
+    getMails(r.$, category.name)
+    var __EVENTTARGET = hasNextPage(r.$)
+    log('__EVENTTARGET:%s', __EVENTTARGET)
+    if (__EVENTTARGET != false) {
+      setTimeout(() => {
+        fetchTradeByCategoryNext(r, category, url)
+      }, 1000)
+    }
+  }
+}
+
+function splitCategoryName(name) {
+  return name.substr(0, name.indexOf(' ('))
+}
+//check "Trang Sau" is exist
+function hasNextPage($) {
+  try {
+    var aTags = cheerio.load(
+      $('#giatribody')
+        .next()
+        .html()
+    )('a')
+    for (var i = 0; i < aTags.length; i++) {
+      if (
+        aTags
+          .eq(i)
+          .text()
+          .trim() == 'Trang sau'
+      ) {
+        var href = aTags.eq(i).attr('href')
+        return href.substr(25, href.length - 30) // __EVENTTARGET || http://prntscr.com/fzlbsw
+      }
+      //log(aTags.eq(i).attr('href'));
+    }
+    return false
+  } catch (err) {
+    log(err)
+    return false
+  }
 }
 async function getMails($, fileName) {
   var domMail = $('a.tooltip-example-2')
@@ -155,9 +241,10 @@ ypCfg.az.forEach(async spell => {
   let categories = await fetchCategoriesSpell(page, spell, province)
   log(categories.length)
   log(categories)
-  categories.forEach(async category => {
-    await fetchTradeByCategory(ypCfg.ypTradeUrl, category, 2)
-  })  
+  // categories.forEach(async category => {
+  //   await fetchTradeByCategory(ypCfg.ypTradeUrl, category, 2)
+  // })
+  fetchTradeByCategory(ypCfg.ypTradeUrl, categories[0], 2)
 })
 
 // ============ Modern Promise.all method  ============
