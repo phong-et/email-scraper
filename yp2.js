@@ -18,7 +18,7 @@ async function writeFile(fileName, content) {
 }
 async function appendFile(fileName, content) {
   return new Promise((resolve, reject) => {
-    fs.writeFile(fileName, content, function(err) {
+    fs.appendFile(fileName, content, function(err) {
       if (err) reject(err)
       var statusText = 'append file > ' + fileName + ' success'
       log(statusText)
@@ -127,11 +127,13 @@ async function fetchTradeByCategory(page, category, province) {
       return {$: cheerio.load(body), cookies: res.headers['set-cookie']}
     },
   })
-  getMails(response.$, category.name)
+  tradeMails = tradeMails.concat(getMails(response.$))
   fetchTradeByCategoryNext(response, category, url)
 }
-var isUseCookie = false
-var jar
+var isUseCookie = false,
+  jar,
+  count = 0,
+  tradeMails = []
 async function fetchTradeByCategoryNext(response, category, url) {
   let $ = response.$
   var __EVENTTARGET = hasNextPage($)
@@ -162,25 +164,32 @@ async function fetchTradeByCategoryNext(response, category, url) {
       url: url,
       method: 'POST',
       jar: jar,
-      form: {
-        ClassId: category.id,
-        Province: province,
-      },
+      form: form,
       headers: headers,
       resolveWithFullResponse: true,
       transform: (body, res) => {
         return {$: cheerio.load(body), cookies: res.headers['set-cookie']}
       },
     })
-    log('isUseCookie:%s', isUseCookie)
-    getMails(r.$, category.name)
+    //log('isUseCookie:%s', isUseCookie)
+    tradeMails = tradeMails.concat(getMails(r.$))
     var __EVENTTARGET = hasNextPage(r.$)
-    log('__EVENTTARGET:%s', __EVENTTARGET)
+    //log('__EVENTTARGET:%s', __EVENTTARGET)
     if (__EVENTTARGET != false) {
       setTimeout(() => {
         fetchTradeByCategoryNext(r, category, url)
-      }, 1000)
+      },100)
+    } else {
+      log('tradeMails.length=%s',tradeMails.length)
+      tradeMails = [...new Set(tradeMails)]
+      log('tradeMails.length=%s(after filter)',tradeMails.length)
+      await writeFile('yp/' + category.name + '.txt',tradeMails.toString().replace(/,/g, '\r\n'))
     }
+  } else {
+    log('tradeMails.length=%s',tradeMails.length)
+    tradeMails = [...new Set(tradeMails)]
+    log('tradeMails.length=%s(after filter)',tradeMails.length)
+    await writeFile('yp/' + category.name + '.txt', tradeMails.toString().replace(/,/g, '\r\n'))
   }
 }
 
@@ -205,7 +214,7 @@ function hasNextPage($) {
         var href = aTags.eq(i).attr('href')
         return href.substr(25, href.length - 30) // __EVENTTARGET || http://prntscr.com/fzlbsw
       }
-      //log(aTags.eq(i).attr('href'));
+      //log(aTags.eq(i).attr('href'))
     }
     return false
   } catch (err) {
@@ -213,9 +222,9 @@ function hasNextPage($) {
     return false
   }
 }
-async function getMails($, fileName) {
+function getMails($) {
   var domMail = $('a.tooltip-example-2')
-  log('domMail.length:%s', domMail.length)
+  //log('domMail.length:%s', domMail.length)
   if (domMail.length > 0) {
     var mails = []
     for (var i = 0; i < domMail.length; i++) {
@@ -229,23 +238,30 @@ async function getMails($, fileName) {
         //log(err)
       }
     }
-    fileName += '.txt'
-    await appendFile('yp/' + fileName, '\r\n' + mails.toString().replace(/,/g, '\r\n'))
   } else log('mail not found')
+  log('Mail of page %s : %s', count, mails.length)
+  // clean email invalid
+  mails = mails.filter(mail => mail !== null && mail != '' && mail !== undefined)
+  // delete duplicate email
+  // mails = [...new Set(mails)]
+  log('Mail of page %s : %s(after clean)', count++, mails.length)
+  return mails
 }
 
 // ============ Modern forEach method  ============
 let page = ypCfg.ypCategoriesUrl,
   province = ypCfg.province
-ypCfg.az.forEach(async spell => {
-  let categories = await fetchCategoriesSpell(page, spell, province)
-  log(categories.length)
-  log(categories)
-  // categories.forEach(async category => {
-  //   await fetchTradeByCategory(ypCfg.ypTradeUrl, category, 2)
-  // })
-  fetchTradeByCategory(ypCfg.ypTradeUrl, categories[0], 2)
-})
+// ypCfg.az.forEach(async spell => {
+//   let categories = await fetchCategoriesSpell(page, spell, province)
+//   log(categories.length)
+//   log(categories)
+//   categories.forEach(async category => {
+//     await fetchTradeByCategory(ypCfg.ypTradeUrl, category, 2)
+//   })
+//   //fetchTradeByCategory(ypCfg.ypTradeUrl, categories[0], 2)
+// })
+fetchCategoriesSpell(page, 'C', province)
+//fetchTradeByCategory(ypCfg.ypTradeUrl, {name: 'CƠ KHÍ - GIA CÔNG & SẢN XUẤT', id: '601460'}, 2)
 
 // ============ Modern Promise.all method  ============
 // (async function() {
