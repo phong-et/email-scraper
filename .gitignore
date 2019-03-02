@@ -14,6 +14,8 @@ yp.zip
 ncdn.js
 msc.cfg
 yp/*
+tvvn/tvvn.cfg
+tvvn/test/*
 # Editor directories and files
 .idea
 .vscode

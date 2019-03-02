@@ -178,17 +178,17 @@ async function fetchTradeByCategoryNext(response, category, url) {
     if (__EVENTTARGET != false) {
       setTimeout(() => {
         fetchTradeByCategoryNext(r, category, url)
-      },100)
+      }, 100)
     } else {
-      log('tradeMails.length=%s',tradeMails.length)
+      log('tradeMails.length=%s', tradeMails.length)
       tradeMails = [...new Set(tradeMails)]
-      log('tradeMails.length=%s(after filter)',tradeMails.length)
-      await writeFile('yp/' + category.name + '.txt',tradeMails.toString().replace(/,/g, '\r\n'))
+      log('tradeMails.length=%s(after filter)', tradeMails.length)
+      await writeFile('yp/' + category.name + '.txt', tradeMails.toString().replace(/,/g, '\r\n'))
     }
   } else {
-    log('tradeMails.length=%s',tradeMails.length)
+    log('tradeMails.length=%s', tradeMails.length)
     tradeMails = [...new Set(tradeMails)]
-    log('tradeMails.length=%s(after filter)',tradeMails.length)
+    log('tradeMails.length=%s(after filter)', tradeMails.length)
     await writeFile('yp/' + category.name + '.txt', tradeMails.toString().replace(/,/g, '\r\n'))
   }
 }
@@ -249,19 +249,30 @@ function getMails($) {
 }
 
 // ============ Modern forEach method  ============
+/**
+ * Mails : {
+ *  A: {
+ *    Trades:[{
+ *      name : String
+ *      id:Int
+ *      mails:[Email]
+ *    }]
+ *  }
+ *
+ * }
+ */
 let page = ypCfg.ypCategoriesUrl,
   province = ypCfg.province
-// ypCfg.az.forEach(async spell => {
-//   let categories = await fetchCategoriesSpell(page, spell, province)
-//   log(categories.length)
-//   log(categories)
-//   categories.forEach(async category => {
-//     await fetchTradeByCategory(ypCfg.ypTradeUrl, category, 2)
-//   })
-//   //fetchTradeByCategory(ypCfg.ypTradeUrl, categories[0], 2)
-// })
-fetchCategoriesSpell(page, 'C', province)
-//fetchTradeByCategory(ypCfg.ypTradeUrl, {name: 'CƠ KHÍ - GIA CÔNG & SẢN XUẤT', id: '601460'}, 2)
+ypCfg.az.forEach(async spell => {
+  let categories = await fetchCategoriesSpell(page, spell, province)
+  log(categories.length)
+  log(categories)
+  categories.forEach(async category => {
+    await fetchTradeByCategory(ypCfg.ypTradeUrl, category, 2)
+  })
+})
+// fetchCategoriesSpell(page, 'C', province)
+// fetchTradeByCategory(ypCfg.ypTradeUrl, {name: 'CƠ KHÍ - GIA CÔNG & SẢN XUẤT', id: '601460'}, 2)
 
 // ============ Modern Promise.all method  ============
 // (async function() {
@@ -277,7 +288,7 @@ fetchCategoriesSpell(page, 'C', province)
 // ============ Classic Method ============
 // let page = ypCfg.ypCategoriesUrl,
 //   province = ypCfg.province,
-// var i = 0,
+//   i = 0,
 //   az = ypCfg.az
 // async function start() {
 //   if (i == az.length) {
