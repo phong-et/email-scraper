@@ -113,7 +113,7 @@ function fetchCategoriesByLetterAllPages(url, letter) {
     ).then(data => {
       let categories = [].concat(...data)
       // console.log(categories)
-      // writeFile(letter + '.txt', JSON.stringify(categories).toString())
+      writeFile(letter + '.txt', JSON.stringify(categories).toString())
       return categories
     })
   })
@@ -139,7 +139,7 @@ function getMails($) {
     var title = aTag.attr('title').trim()
     if (title) mails.push(title)
   }
-  log(mails)
+  //log(mails)
   return mails
 }
 
@@ -159,7 +159,7 @@ async function fetchMailsByCategoryOnePageOfPlace(url, category, place, page) {
   return getMails($)
 }
 function fetchMailsByCategoryAllPagesOfPlace(url, category, place) {
-  fetchMaxPageMailByCatagoryOfPlace(url, category, place).then(pages => {
+  return fetchMaxPageMailByCatagoryOfPlace(url, category, place).then(pages => {
     log(pages)
     return Promise.all(
       pages.map(page => {
@@ -171,7 +171,7 @@ function fetchMailsByCategoryAllPagesOfPlace(url, category, place) {
       mails = [...new Set(mails)]
       log('After filter mails.length=%s', mails.length)
       //console.log(mails)
-      writeFile(category.name + '.txt', JSON.stringify(mails).toString())
+      writeFile(category.name + '.txt', mails.toString().replace(/,/g, '\r\n'))
       return mails
     })
   })
@@ -213,24 +213,30 @@ async function fetchMaxPageMailByCatagoryOfPlace(url, category, place) {
 
 //////////////////////////////////// MAIN /////////////////////////////////
 let letters = cfg.alphabet,
-  url = cfg.tvvnCategoriesUrl
+  url = cfg.tvvnCategoriesUrl,
+  tradeUrl = cfg.ttvnTradeUrl,
+  place = '-%E1%BB%9F-t%E1%BA%A1i-tp.-h%E1%BB%93-ch%C3%AD-minh-%28tphcm%29'
+
 // fetchCategoriesByLetter(cfg.tvvnCategoriesUrl, 'T')
 // fetchCategoriesByLetterAllPages(url, letter)
-// letters.forEach(async letter => {
-//   await fetchCategoriesByLetterAllPages(url, letter).then(categories => {
-//     log(categories)
-//   })
-// })
-function a() {
-  return Promise.all(
-    letters.map(async letter => {
-      return await fetchCategoriesByLetterAllPages(url, letter)
+letters.forEach(async letter => {
+  await fetchCategoriesByLetterAllPages(url, letter).then(categories => {
+    log(categories)
+    categories.forEach(async category => {
+      await fetchMailsByCategoryAllPagesOfPlace(tradeUrl, category, place)
     })
-  ).then(function(data) {
-    //log(data)
-    return data
   })
-}
-a().then(b => {
-  log(b)
 })
+// function a() {
+//   return Promise.all(
+//     letters.map(async letter => {
+//       return await fetchCategoriesByLetterAllPages(url, letter)
+//     })
+//   ).then(function(data) {
+//     //log(data)
+//     return data
+//   })
+// }
+// a().then(b => {
+//   log(b)
+// })
