@@ -1,7 +1,7 @@
 let rp = require('request-promise'),
   fs = require('fs'),
   cheerio = require('cheerio'),
-  cfg = require('./tvvn.cfg'),
+  cfg = require('./tvvn.cfg.js'),
   log = console.log,
   headers = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:24.0) Gecko/20100101 Firefox/24.0',
@@ -26,6 +26,7 @@ async function appendFile(fileName, content) {
     })
   })
 }
+////////////////////////////////////////////////////////// FETCH CATEGORY /////////////////////////////////////////////
 function getCategories($) {
   var categories = []
   let elements = $('p').attr('style', 'font-size:15px')
@@ -101,27 +102,29 @@ async function fetchMaxPageNumberCategoriesByLetter(url, letter) {
 }
 
 function fetchCategoriesByLetterAllPages(url, letter) {
-  fetchMaxPageNumberCategoriesByLetter(url, letter).then(pages => {
+  return fetchMaxPageNumberCategoriesByLetter(url, letter).then(pages => {
+    log(url)
+    log(letter)
     log(pages)
     return Promise.all(
       pages.map(page => {
         return fetchCategoriesByLetterOnePage(url, letter, page)
       })
-    ).then(function(data) {
+    ).then(data => {
       let categories = [].concat(...data)
-      console.log(categories)
-      writeFile(letter + '.txt', JSON.stringify(categories).toString())
+      // console.log(categories)
+      // writeFile(letter + '.txt', JSON.stringify(categories).toString())
       return categories
     })
   })
 }
-
-//let url = cfg.tvvnCategoriesUrl,
+// Test fetch categories
+// let url = cfg.tvvnCategoriesUrl,
 // letter = 'T'
 // fetchCategoriesByLetter(cfg.tvvnCategoriesUrl, 'T')
-//fetchCategoriesByLetterAllPages(url, letter)
+// fetchCategoriesByLetterAllPages(url, letter)
 
-////////////////////////////// FETCH MAILS /////////////////////////////////////////////
+///////////////////////////////////////////// FETCH MAILS /////////////////////////////////////////////
 
 // http://prntscr.com/msi39b
 function getMails($) {
@@ -197,13 +200,37 @@ async function fetchMaxPageMailByCatagoryOfPlace(url, category, place) {
   log(maxPage)
   return Array.from({length: maxPage}, (_, i) => i + 1)
 }
-// MAIN
-var tradeUrl = cfg.ttvnTradeUrl,
-  place = '-%E1%BB%9F-t%E1%BA%A1i-tp.-h%E1%BB%93-ch%C3%AD-minh-%28tphcm%29',
-  category = {
-    name: 'Khách Sạn',
-    id: '127160',
-  }
+// Test fetch mails
+// var tradeUrl = cfg.ttvnTradeUrl,
+//   place = '-%E1%BB%9F-t%E1%BA%A1i-tp.-h%E1%BB%93-ch%C3%AD-minh-%28tphcm%29',
+//   category = {
+//     name: 'Khách Sạn',
+//     id: '127160',
+//   }
 // fetchMailsByCategoryOnePageOfPlace(tradeUrl, category, place)
 // fetchMaxPageMailByCatagoryOfPlace(tradeUrl, category, place)
-fetchMailsByCategoryAllPagesOfPlace(tradeUrl, category, place)
+// fetchMailsByCategoryAllPagesOfPlace(tradeUrl, category, place)
+
+//////////////////////////////////// MAIN /////////////////////////////////
+let letters = cfg.alphabet,
+  url = cfg.tvvnCategoriesUrl
+// fetchCategoriesByLetter(cfg.tvvnCategoriesUrl, 'T')
+// fetchCategoriesByLetterAllPages(url, letter)
+// letters.forEach(async letter => {
+//   await fetchCategoriesByLetterAllPages(url, letter).then(categories => {
+//     log(categories)
+//   })
+// })
+function a() {
+  return Promise.all(
+    letters.map(async letter => {
+      return await fetchCategoriesByLetterAllPages(url, letter)
+    })
+  ).then(function(data) {
+    //log(data)
+    return data
+  })
+}
+a().then(b => {
+  log(b)
+})

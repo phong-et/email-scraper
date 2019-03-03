@@ -23,3 +23,5 @@ tvvn/test/*
 *.ntvs*
 *.njsproj
 *.sln
+
+tvvn/tvvn\.cfg\.js
