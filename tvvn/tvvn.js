@@ -28,7 +28,7 @@ async function appendFile(fileName, content) {
 }
 function getCategories($) {
   var categories = []
-  let elements = $('p').attr('style','font-size:15px')
+  let elements = $('p').attr('style', 'font-size:15px')
   for (var i = 0; i < elements.length; i++) {
     var aTagHtml = elements
       .eq(i)
@@ -53,7 +53,7 @@ function getCategories($) {
   log(categories)
   return categories
 }
-async function fetchCategoriesByLetterNext(page, spell, province, form) {
+async function fetchCategoriesByLetterNext(page, letter, maxPage) {
   var categoriesSpellNext = []
   var url = page + '?spell=' + spell + '&province=' + province
   var options = {
@@ -73,9 +73,11 @@ async function fetchCategoriesByLetterNext(page, spell, province, form) {
 
   return categoriesSpellNext
 }
-async function fetchCategoriesByLetter(page, letter) {
+
+async function fetchCategoriesByLetter(url, letter, page) {
   var categoriesOfLetter = []
-  var url = page  + letter
+  var url = url + letter
+  if (page !== undefined) url += '?page=' + page
   var options = {
     url: url,
     headers: headers,
@@ -84,15 +86,47 @@ async function fetchCategoriesByLetter(page, letter) {
     },
   }
   let $ = await rp(options)
-  var html = $('#khung_subpages > div').eq(2).eq(0).html()
+  // calc next page
+  let paging = $('#paging a')
+  let maxPage = paging
+    .eq(paging.length - 2)
+    .text()
+    .trim()
+  // log('maxPage:',maxPage)
+  var html = $('#khung_subpages > div')
+    .eq(2)
+    .eq(0)
+    .html()
   // log(html)
   $ = cheerio.load(html)
-  html = $('div').attr('style','height:23px; padding-left:21px; margin-bottom:8px').html()
+  html = $('div')
+    .attr('style', 'height:23px; padding-left:21px; margin-bottom:8px')
+    .html()
   // log(html)
   $ = cheerio.load(html)
   categoriesOfLetter = categoriesOfLetter.concat(getCategories($))
-
   await writeFile(letter + '.txt', JSON.stringify(categoriesOfLetter).toString())
   return categoriesOfLetter
 }
-fetchCategoriesByLetter(cfg.tvvnCategoriesUrl,'A')
+async function fetchMaxPageNumberCategoriesByLetter(url, letter) {
+  var url = url + letter
+  var options = {
+    url: url,
+    headers: headers,
+    transform: function(body) {
+      return cheerio.load(body)
+    },
+  }
+  let $ = await rp(options)
+  // calc next page
+  let paging = $('#paging a')
+  let maxPage = paging
+    .eq(paging.length - 2)
+    .text()
+    .trim()
+  return Array.from({length: maxPage}, (_, i) => i + 1)
+}
+// fetchCategoriesByLetter(cfg.tvvnCategoriesUrl, 'T')
+fetchMaxPageNumberCategoriesByLetter(cfg.tvvnCategoriesUrl, 'T').then(pages => {
+  log(pages)
+})
