@@ -50,33 +50,13 @@ function getCategories($) {
       categories.push({name: name, id: id})
     }
   }
-  log(categories)
+  // log(categories)
   return categories
 }
-async function fetchCategoriesByLetterNext(page, letter, maxPage) {
-  var categoriesSpellNext = []
-  var url = page + '?spell=' + spell + '&province=' + province
-  var options = {
-    method: 'POST',
-    url: url,
-    form: form,
-    headers: headers,
-    transform: function(body) {
-      return cheerio.load(body)
-    },
-  }
-  // await log('Get categories next page :%s', url)
-  const $ = await rp(options)
-  categoriesSpellNext = getCategories($)
-  // log('categoriesSpellNext.length:%s', categoriesSpellNext.length)
-  // log(categoriesSpellNext)
 
-  return categoriesSpellNext
-}
-
-async function fetchCategoriesByLetter(url, letter, page) {
-  var categoriesOfLetter = []
+async function fetchCategoriesByLetterOnePage(url, letter, page) {
   var url = url + letter
+  // miss page param will fetch 1st page
   if (page !== undefined) url += '?page=' + page
   var options = {
     url: url,
@@ -86,13 +66,6 @@ async function fetchCategoriesByLetter(url, letter, page) {
     },
   }
   let $ = await rp(options)
-  // calc next page
-  let paging = $('#paging a')
-  let maxPage = paging
-    .eq(paging.length - 2)
-    .text()
-    .trim()
-  // log('maxPage:',maxPage)
   var html = $('#khung_subpages > div')
     .eq(2)
     .eq(0)
@@ -104,9 +77,8 @@ async function fetchCategoriesByLetter(url, letter, page) {
     .html()
   // log(html)
   $ = cheerio.load(html)
-  categoriesOfLetter = categoriesOfLetter.concat(getCategories($))
-  await writeFile(letter + '.txt', JSON.stringify(categoriesOfLetter).toString())
-  return categoriesOfLetter
+  // await writeFile(letter + '.txt', JSON.stringify(categoriesOfLetter).toString())
+  return getCategories($)
 }
 async function fetchMaxPageNumberCategoriesByLetter(url, letter) {
   var url = url + letter
@@ -124,9 +96,27 @@ async function fetchMaxPageNumberCategoriesByLetter(url, letter) {
     .eq(paging.length - 2)
     .text()
     .trim()
+  // log(maxPage)
   return Array.from({length: maxPage}, (_, i) => i + 1)
 }
+let url = cfg.tvvnCategoriesUrl,
+  letter = 'T'
 // fetchCategoriesByLetter(cfg.tvvnCategoriesUrl, 'T')
-fetchMaxPageNumberCategoriesByLetter(cfg.tvvnCategoriesUrl, 'T').then(pages => {
-  log(pages)
-})
+function fetchCategoriesByLetterAllPages(url, letter) {
+  fetchMaxPageNumberCategoriesByLetter(url, letter).then(pages => {
+    log(pages)
+    return Promise.all(
+      pages.map(page => {
+        return fetchCategoriesByLetterOnePage(url, letter, page)
+      })
+    ).then(function(data) {
+      let categories = [].concat(...data)
+      console.log(categories)
+      writeFile(letter + '.txt', JSON.stringify(categories).toString())
+      return categories
+    })
+  })
+}
+
+
+fetchCategoriesByLetterAllPages(url, letter)
