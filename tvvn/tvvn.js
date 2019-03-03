@@ -99,9 +99,7 @@ async function fetchMaxPageNumberCategoriesByLetter(url, letter) {
   // log(maxPage)
   return Array.from({length: maxPage}, (_, i) => i + 1)
 }
-let url = cfg.tvvnCategoriesUrl,
-  letter = 'T'
-// fetchCategoriesByLetter(cfg.tvvnCategoriesUrl, 'T')
+
 function fetchCategoriesByLetterAllPages(url, letter) {
   fetchMaxPageNumberCategoriesByLetter(url, letter).then(pages => {
     log(pages)
@@ -118,5 +116,94 @@ function fetchCategoriesByLetterAllPages(url, letter) {
   })
 }
 
+//let url = cfg.tvvnCategoriesUrl,
+// letter = 'T'
+// fetchCategoriesByLetter(cfg.tvvnCategoriesUrl, 'T')
+//fetchCategoriesByLetterAllPages(url, letter)
 
-fetchCategoriesByLetterAllPages(url, letter)
+////////////////////////////// FETCH MAILS /////////////////////////////////////////////
+
+// http://prntscr.com/msi39b
+function getMails($) {
+  var mails = []
+  let elements = $('div .email_text')
+  for (var i = 0; i < elements.length; i++) {
+    var aTagHtml = elements
+      .eq(i)
+      .html()
+      .trim()
+    var aTag = cheerio.load(aTagHtml)('a')
+    var title = aTag.attr('title').trim()
+    if (title) mails.push(title)
+  }
+  log(mails)
+  return mails
+}
+
+async function fetchMailsByCategoryOnePageOfPlace(url, category, place, page) {
+  url = url + category.id + '/' + encodeURI(category.name) + place
+  // miss page param will fetch 1st page
+  if (page !== undefined) url += '?page=' + page
+  var options = {
+    url: url,
+    headers: headers,
+    transform: function(body) {
+      return cheerio.load(body)
+    },
+  }
+  let $ = await rp(options)
+  //log($.html())
+  return getMails($)
+}
+function fetchMailsByCategoryAllPagesOfPlace(url, category, place) {
+  fetchMaxPageMailByCatagoryOfPlace(url, category, place).then(pages => {
+    log(pages)
+    return Promise.all(
+      pages.map(page => {
+        return fetchMailsByCategoryOnePageOfPlace(url, category, place, page)
+      })
+    ).then(function(data) {
+      let mails = [].concat(...data)
+      log('Before filter mails.length=%s', mails.length)
+      mails = [...new Set(mails)]
+      log('After filter mails.length=%s', mails.length)
+      //console.log(mails)
+      writeFile(category.name + '.txt', JSON.stringify(mails).toString())
+      return mails
+    })
+  })
+}
+
+async function fetchMaxPageMailByCatagoryOfPlace(url, category, place) {
+  url = url + category.id + '/' + encodeURI(category.name) + place
+  log(url)
+  //'https://trangvangvietnam.com/cateprovinces/127160/Kh%C3%A1ch%20S%E1%BA%A1n-%E1%BB%9F-t%E1%BA%A1i-tp.-h%E1%BB%93-ch%C3%AD-minh-%28tphcm%29'
+  //'https://trangvangvietnam.com/cateprovinces/127160/Kh%C3%A1ch%20S%E1%BA%A1n-%E1%BB%9F-t%E1%BA%A1i-tp.-h%E1%BB%93-ch%C3%AD-minh-%28tphcm%29'
+  //'https://trangvangvietnam.com/cateprovinces/127160/Kh%C3%A1ch%20S%E1%BA%A1n-%E1%BB%9F-t%E1%BA%A1i-tp.-h%E1%BB%93-ch%C3%AD-minh-%2528tphcm%2529
+  var options = {
+    url: url,
+    headers: headers,
+    transform: function(body) {
+      return cheerio.load(body)
+    },
+  }
+  let $ = await rp(options)
+  // calc next page
+  let paging = $('#paging a')
+  let maxPage = paging
+    .eq(paging.length - 2)
+    .text()
+    .trim()
+  log(maxPage)
+  return Array.from({length: maxPage}, (_, i) => i + 1)
+}
+// MAIN
+var tradeUrl = cfg.ttvnTradeUrl,
+  place = '-%E1%BB%9F-t%E1%BA%A1i-tp.-h%E1%BB%93-ch%C3%AD-minh-%28tphcm%29',
+  category = {
+    name: 'Khách Sạn',
+    id: '127160',
+  }
+// fetchMailsByCategoryOnePageOfPlace(tradeUrl, category, place)
+// fetchMaxPageMailByCatagoryOfPlace(tradeUrl, category, place)
+fetchMailsByCategoryAllPagesOfPlace(tradeUrl, category, place)
