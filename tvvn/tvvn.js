@@ -6,21 +6,11 @@ let rp = require('request-promise'),
   headers = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:24.0) Gecko/20100101 Firefox/24.0',
   }
-async function writeFile(fileName, content) {
+function writeFile(fileName, content) {
   return new Promise((resolve, reject) => {
-    fs.writeFile(fileName, content, function(err) {
+    fs.writeFile('mails/' + fileName.replace(/[/\\?%*:|"<>]/g, '-'), content, function(err) {
       if (err) reject(err)
-      var statusText = 'write file > ' + fileName + ' success'
-      log(statusText)
-      resolve(statusText)
-    })
-  })
-}
-async function appendFile(fileName, content) {
-  return new Promise((resolve, reject) => {
-    fs.appendFile(fileName, content, function(err) {
-      if (err) reject(err)
-      var statusText = 'append file > ' + fileName + ' success'
+      var statusText = 'write file > ' + fileName.replace(/[/\\?%*:|"<>]/g, '-') + ' success'
       log(statusText)
       resolve(statusText)
     })
@@ -100,20 +90,19 @@ async function fetchMaxPageNumberCategoriesByLetter(url, letter) {
   // log(maxPage)
   return Array.from({length: maxPage}, (_, i) => i + 1)
 }
-
-function fetchCategoriesByLetterAllPages(url, letter) {
-  return fetchMaxPageNumberCategoriesByLetter(url, letter).then(pages => {
+async function fetchCategoriesByLetterAllPages(url, letter) {
+  return await fetchMaxPageNumberCategoriesByLetter(url, letter).then(async pages => {
     log(url)
     log(letter)
     log(pages)
-    return Promise.all(
-      pages.map(page => {
-        return fetchCategoriesByLetterOnePage(url, letter, page)
+    return await Promise.all(
+      pages.map(async page => {
+        return await fetchCategoriesByLetterOnePage(url, letter, page)
       })
-    ).then(data => {
+    ).then(async data => {
       let categories = [].concat(...data)
       // console.log(categories)
-      writeFile(letter + '.txt', JSON.stringify(categories).toString())
+      await writeFile(letter + '.txt', JSON.stringify(categories).toString())
       return categories
     })
   })
@@ -158,28 +147,53 @@ async function fetchMailsByCategoryOnePageOfPlace(url, category, place, page) {
   //log($.html())
   return getMails($)
 }
-function fetchMailsByCategoryAllPagesOfPlace(url, category, place) {
-  return fetchMaxPageMailByCatagoryOfPlace(url, category, place).then(pages => {
+// ===> Promise all
+// async function fetchMailsByCategoryAllPagesOfPlace(url, category, place) {
+//   return await fetchMaxPageNumberMailByCatagoryOfPlace(url, category, place).then(async pages => {
+//     log(category)
+//     log(pages)
+//     return await Promise.all(
+//       pages.map(async page => {
+//         setTimeout(async () => {
+//           return await fetchMailsByCategoryOnePageOfPlace(url, category, place, page)
+//         }, 1000)
+//       })
+//     ).then(async data => {
+//       let mails = [].concat(...data)
+//       //log('Before filter mails.length=%s', mails.length)
+//       mails = [...new Set(mails)]
+//       //log('After filter mails.length=%s', mails.length)
+//       //console.log(mails)
+//       await writeFile(category.name + '.txt', mails.toString().replace(/,/g, '\r\n'))
+//       return mails
+//     })
+//   })
+// }
+// ===> for & delay is better
+async function fetchMailsByCategoryAllPagesOfPlace(url, category, place) {
+  return await fetchMaxPageNumberMailByCatagoryOfPlace(url, category, place).then(async pages => {
+    log(category)
     log(pages)
-    return Promise.all(
-      pages.map(page => {
-        return fetchMailsByCategoryOnePageOfPlace(url, category, place, page)
-      })
-    ).then(function(data) {
-      let mails = [].concat(...data)
-      log('Before filter mails.length=%s', mails.length)
-      mails = [...new Set(mails)]
-      log('After filter mails.length=%s', mails.length)
-      //console.log(mails)
-      writeFile(category.name + '.txt', mails.toString().replace(/,/g, '\r\n'))
-      return mails
-    })
+    let mails = []
+    for (let i = 0; i < pages.length; i++) {
+      await delay(2000)
+      let mail = await fetchMailsByCategoryOnePageOfPlace(url, category, place, pages[i])
+      mails.push(mail)
+      //log(mail)
+    }
+    //log('Done')
+    //log(mails)
+    mails = [].concat(...mails)
+    log('[Category] Before filter mails.length=%s', mails.length)
+    mails = [...new Set(mails)]
+    log('[Category] After filter mails.length=%s', mails.length)
+    await writeFile(category.name + '.txt', mails.toString().replace(/,/g, '\r\n'))
+    return mails
   })
 }
-
-async function fetchMaxPageMailByCatagoryOfPlace(url, category, place) {
+async function fetchMaxPageNumberMailByCatagoryOfPlace(url, category, place) {
   url = url + category.id + '/' + encodeURI(category.name) + place
-  log(url)
+  //log(url)
   //'https://trangvangvietnam.com/cateprovinces/127160/Kh%C3%A1ch%20S%E1%BA%A1n-%E1%BB%9F-t%E1%BA%A1i-tp.-h%E1%BB%93-ch%C3%AD-minh-%28tphcm%29'
   //'https://trangvangvietnam.com/cateprovinces/127160/Kh%C3%A1ch%20S%E1%BA%A1n-%E1%BB%9F-t%E1%BA%A1i-tp.-h%E1%BB%93-ch%C3%AD-minh-%28tphcm%29'
   //'https://trangvangvietnam.com/cateprovinces/127160/Kh%C3%A1ch%20S%E1%BA%A1n-%E1%BB%9F-t%E1%BA%A1i-tp.-h%E1%BB%93-ch%C3%AD-minh-%2528tphcm%2529
@@ -197,7 +211,7 @@ async function fetchMaxPageMailByCatagoryOfPlace(url, category, place) {
     .eq(paging.length - 2)
     .text()
     .trim()
-  log(maxPage)
+  //log(maxPage)
   return Array.from({length: maxPage}, (_, i) => i + 1)
 }
 // Test fetch mails
@@ -208,7 +222,7 @@ async function fetchMaxPageMailByCatagoryOfPlace(url, category, place) {
 //     id: '127160',
 //   }
 // fetchMailsByCategoryOnePageOfPlace(tradeUrl, category, place)
-// fetchMaxPageMailByCatagoryOfPlace(tradeUrl, category, place)
+// fetchMaxPageNumberMailByCatagoryOfPlace(tradeUrl, category, place)
 // fetchMailsByCategoryAllPagesOfPlace(tradeUrl, category, place)
 
 //////////////////////////////////// MAIN /////////////////////////////////
@@ -219,24 +233,265 @@ let letters = cfg.alphabet,
 
 // fetchCategoriesByLetter(cfg.tvvnCategoriesUrl, 'T')
 // fetchCategoriesByLetterAllPages(url, letter)
-letters.forEach(async letter => {
-  await fetchCategoriesByLetterAllPages(url, letter).then(categories => {
-    log(categories)
-    categories.forEach(async category => {
-      await fetchMailsByCategoryAllPagesOfPlace(tradeUrl, category, place)
-    })
-  })
-})
-// function a() {
-//   return Promise.all(
-//     letters.map(async letter => {
-//       return await fetchCategoriesByLetterAllPages(url, letter)
+
+//////////////////////////////////// PROMISE.ALL //////////////////////////////////
+// letters.forEach(async letter => {
+//   await fetchCategoriesByLetterAllPages(url, letter).then(async categories => {
+//     log('categories.length:%s', categories.length)
+//     log(categories)
+//     // categories.forEach(async category => {
+//     //   await fetchMailsByCategoryAllPagesOfPlace(tradeUrl, category, place)
+//     // })
+//     return await Promise.all(
+//       categories.map(async category => {
+//         return await fetchMailsByCategoryAllPagesOfPlace(tradeUrl, category, place)
+//       })
+//     ).then(async data => {
+//       let mails = [].concat(...data)
+//       log('Before filter mails.length=%s', mails.length)
+//       mails = [...new Set(mails)]
+//       log('After filter mails.length=%s', mails.length)
+//       //console.log(mails)
+//       await writeFile(letter + '_All_Mails.txt', mails.toString().replace(/,/g, '\r\n'))
 //     })
-//   ).then(function(data) {
-//     //log(data)
-//     return data
 //   })
-// }
-// a().then(b => {
-//   log(b)
 // })
+
+//////////////////////////////////// FOR & DELAY //////////////////////////////////
+async function delay(ms) {
+  return new Promise(resolve => {
+    setTimeout(resolve, ms)
+  })
+}
+var b = [
+  {
+    name: 'Bật Lửa/Hộp Quẹt - Sản Xuất và Bán Buôn',
+    id: '142400',
+  },
+  {
+    name: 'Bạt Nhựa - Bạt Che Nắng - Bạt Che Mưa',
+    id: '42010',
+  },
+  {
+    name: 'Vải Bạt Nông Nghiệp (Bạt Hái Cà Phê - Bạt Phơi Nông Sản -.)',
+    id: '492427',
+  },
+  {
+    name: 'Nhà Lều Bạt',
+    id: '488113',
+  },
+  {
+    name: 'Bạt Phủ Xe Máy - Bạt Phủ Ô Tô',
+    id: '489319',
+  },
+  {
+    name: 'Bể Bơi - Hồ Bơi - Thiết Bị Và Dịch Vụ Lắp Đặt',
+    id: '230660',
+  },
+  {
+    name: 'Bê Tông (Cọc - ống Cống - Dầm -.) - Công Ty Sản Xuất và Cung Cấp',
+    id: '67060',
+  },
+  {
+    name: 'Cọc Bê Tông Ly Tâm',
+    id: '491959',
+  },
+  {
+    name: 'Bê Tông Tươi - Bê Tông Thương Phẩm',
+    id: '67210',
+  },
+  {
+    name: 'Cọc Bê Tông Cốt Thép',
+    id: '485974',
+  },
+  {
+    name: 'ống cống bê tông',
+    id: '485971',
+  },
+  {
+    name: 'Bê Tông Chịu Lửa - Chịu Nhiệt',
+    id: '485977',
+  },
+  {
+    name: 'Bê Tông - Máy Móc và Thiết Bị',
+    id: '67180',
+  },
+  {
+    name: 'Trạm Trộn Bê Tông & Thiết Bị Phụ Trợ',
+    id: '485989',
+  },
+  {
+    name: 'Bơm Bê Tông',
+    id: '484456',
+  },
+  {
+    name: 'Máy Trộn Bê Tông',
+    id: '485986',
+  },
+  {
+    name: 'Xe Trộn Bê Tông',
+    id: '485992',
+  },
+  {
+    name: 'Bếp Điện - Bếp Từ - Bếp Hồng Ngoại - Nhập Khẩu & Phân Phối',
+    id: '488851',
+  },
+  {
+    name: 'Bếp Gas (Đơn - Đôi - Hồng Ngoại - Âm) - Bán Buôn và Bán Lẻ Bếp Gas',
+    id: '302350',
+  },
+  {
+    name: 'Bếp Gas - Linh - Phụ Kiện Bếp Gas',
+    id: '113070',
+  },
+  {
+    name: 'Van gas - Dây Dẫn Gas - Đồng Hồ Gas',
+    id: '489211',
+  },
+  {
+    name: 'Bếp Gas - Nhà Sản Xuất Bếp',
+    id: '486811',
+  },
+  {
+    name: 'Bếp Nướng BBQ - Bếp Nướng Than Hoa',
+    id: '492052',
+  },
+  {
+    name: 'Bia - Nhà Sản Xuất',
+    id: '35410',
+  },
+  {
+    name: 'Bia - Nhập Khẩu và Phân Phối',
+    id: '27160',
+  },
+  {
+    name: 'Bida - Dụng Cụ Bida',
+    id: '28610',
+  },
+  {
+    name: 'Bình Nước Nóng - Máy Nước Nóng',
+    id: '256360',
+  },
+  {
+    name: 'Bít Tất (Tất Nam - Nữ - Trẻ Em -..) - Sản Xuất và Kinh Doanh',
+    id: '220210',
+  },
+  {
+    name: 'Bọ Nhựa',
+    id: '491029',
+  },
+  {
+    name: 'Bô-Linh',
+    id: '33460',
+  },
+  {
+    name: 'Bobbin Gỗ (Rulo Gỗ)',
+    id: '490909',
+  },
+  {
+    name: 'Bobbin Nhựa - Lõi Nhựa - ống Chỉ Nhựa',
+    id: '489370',
+  },
+  {
+    name: 'Bốc Xếp Hàng Hóa - Bằng Xe Nâng - Xe Cẩu',
+    id: '226360',
+  },
+  {
+    name: 'Bơi - Dạy Bơi',
+    id: '490765',
+  },
+  {
+    name: 'Bồn Nước - Nhà Sản Xuất và Cung Cấp Bồn Nước',
+    id: '488089',
+  },
+  {
+    name: 'Bồn Nước Inox',
+    id: '488494',
+  },
+  {
+    name: 'Bồn Nước Nhựa',
+    id: '488491',
+  },
+  {
+    name: 'Bóng Bay - Bong Bóng - Sản xuất và Kinh doanh',
+    id: '471190',
+  },
+  {
+    name: 'Bóng Bay - Bong Bóng - Trang Trí',
+    id: '472195',
+  },
+  {
+    name: 'Bông Gòn Công Nghiệp - Gòn Bi - Gòn Tấm - Gòn Cuộn -',
+    id: '72060',
+  },
+  {
+    name: 'Bông Y Tế - Nhà Sản Xuất',
+    id: '488734',
+  },
+  {
+    name: 'Bột Cá',
+    id: '491083',
+  },
+  {
+    name: 'Bột Đá',
+    id: '486211',
+  },
+  {
+    name: 'Bột Giấy',
+    id: '486208',
+  },
+  {
+    name: 'Bột Gỗ (Sản Xuất Giấy - Nhựa Gỗ -..)',
+    id: '488269',
+  },
+  {
+    name: 'Bột Màu - Bột Màu Công Nghiệp',
+    id: '488410',
+  },
+  {
+    name: 'Bột Mì - Bột Ngô - Năng - Gạo - Nếp',
+    id: '104760',
+  },
+  {
+    name: 'Bột Nhang - Bột Làm Nhang',
+    id: '491218',
+  },
+  {
+    name: 'Bút - Sản Xuất và Kinh Doanh',
+    id: '488200',
+  },
+  {
+    name: 'Bưu Chính - Các Dịch Vụ Bưu Chính',
+    id: '72610',
+  },
+  {
+    name: 'Bưu Điện',
+    id: '189130',
+  },
+]
+async function fetchMailsByLetter(letter) {
+  let categories = await fetchCategoriesByLetterAllPages(url, letter)
+  // log(categories)
+  let mails = []
+  for (let i = 0; i < categories.length; i++) {
+    await delay(2000)
+    let mail = await fetchMailsByCategoryAllPagesOfPlace(tradeUrl, categories[i], place)
+    mails.push(mail)
+    //log(mail)
+  }
+  //log('Done')
+  //log(mails)
+  mails = [].concat(...mails)
+  log('[Letter] Before filter mails.length=%s', mails.length)
+  mails = [...new Set(mails)]
+  log('[Letter] After filter mails.length=%s', mails.length)
+  await writeFile(letter + '_All_Mails.txt', mails.toString().replace(/,/g, '\r\n'))
+}
+// fetchMailsByLetter('A')
+async function fetchMailsByLetters() {
+  for (let i = 0; i < letters.length; i++) {
+    delay(30)
+    await fetchMailsByLetter(letters[i])
+  }
+}
+fetchMailsByLetters()

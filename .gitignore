@@ -16,6 +16,7 @@ msc.cfg
 yp/*
 tvvn/tvvn.cfg
 tvvn/test/*
+tvvn/mails/*
 # Editor directories and files
 .idea
 .vscode
