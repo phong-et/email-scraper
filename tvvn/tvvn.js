@@ -11,6 +11,16 @@ function writeFile(fileName, content) {
     fs.writeFile('mails/' + fileName.replace(/[/\\?%*:|"<>]/g, '-'), content, function(err) {
       if (err) reject(err)
       var statusText = 'write file > ' + fileName.replace(/[/\\?%*:|"<>]/g, '-') + ' success'
+      //log(statusText)
+      resolve(statusText)
+    })
+  })
+}
+function appendFile(fileName, content) {
+  return new Promise((resolve, reject) => {
+    fs.appendFile(fileName, content, function(err) {
+      if (err) reject(err)
+      var statusText = 'write file > ' + fileName + ' success'
       log(statusText)
       resolve(statusText)
     })
@@ -171,55 +181,65 @@ async function fetchMailsByCategoryOnePageOfPlace(url, category, place, page) {
 // }
 // ===> for & delay is better
 async function fetchMailsByCategoryAllPagesOfPlace(url, category, place) {
-  return await fetchMaxPageNumberMailByCatagoryOfPlace(url, category, place).then(async pages => {
-    log(category)
-    log(pages)
-    let mails = []
-    for (let i = 0; i < pages.length; i++) {
-      await delay(2000)
-      let mail = await fetchMailsByCategoryOnePageOfPlace(url, category, place, pages[i])
-      mails.push(mail)
-      //log(mail)
-    }
-    //log('Done')
-    //log(mails)
-    mails = [].concat(...mails)
-    log('[Category] Before filter mails.length=%s', mails.length)
-    mails = [...new Set(mails)]
-    log('[Category] After filter mails.length=%s', mails.length)
-    await writeFile(category.name + '.txt', mails.toString().replace(/,/g, '\r\n'))
-    return mails
-  })
+  try {
+    return await fetchMaxPageNumberMailByCatagoryOfPlace(url, category, place).then(async pages => {
+      log(JSON.stringify(category))
+      //log(pages)
+      let mails = []
+      for (let i = 0; i < pages.length; i++) {
+        await delay(2000)
+        let mail = await fetchMailsByCategoryOnePageOfPlace(url, category, place, pages[i])
+        mails.push(mail)
+        //log(mail)
+      }
+      //log('Done')
+      //log(mails)
+      mails = [].concat(...mails)
+      //log('[Category] Before filter mails.length=%s', mails.length)
+      mails = [...new Set(mails)]
+      //log('[Category] After filter mails.length=%s', mails.length)
+      await writeFile(category.name + '.txt', mails.toString().replace(/,/g, '\r\n'))
+      return mails
+    })
+  } catch (error) {
+    log(error)
+    appendFile('log.error.txt', JSON.stringify(category) + '\r\n')
+  }
 }
 async function fetchMaxPageNumberMailByCatagoryOfPlace(url, category, place) {
-  url = url + category.id + '/' + encodeURI(category.name) + place
-  //log(url)
-  //'https://trangvangvietnam.com/cateprovinces/127160/Kh%C3%A1ch%20S%E1%BA%A1n-%E1%BB%9F-t%E1%BA%A1i-tp.-h%E1%BB%93-ch%C3%AD-minh-%28tphcm%29'
-  //'https://trangvangvietnam.com/cateprovinces/127160/Kh%C3%A1ch%20S%E1%BA%A1n-%E1%BB%9F-t%E1%BA%A1i-tp.-h%E1%BB%93-ch%C3%AD-minh-%28tphcm%29'
-  //'https://trangvangvietnam.com/cateprovinces/127160/Kh%C3%A1ch%20S%E1%BA%A1n-%E1%BB%9F-t%E1%BA%A1i-tp.-h%E1%BB%93-ch%C3%AD-minh-%2528tphcm%2529
-  var options = {
-    url: url,
-    headers: headers,
-    transform: function(body) {
-      return cheerio.load(body)
-    },
+  try {
+    url = url + category.id + '/' + encodeURI(category.name) + place
+    //log(url)
+    //'https://trangvangvietnam.com/cateprovinces/127160/Kh%C3%A1ch%20S%E1%BA%A1n-%E1%BB%9F-t%E1%BA%A1i-tp.-h%E1%BB%93-ch%C3%AD-minh-%28tphcm%29'
+    //'https://trangvangvietnam.com/cateprovinces/127160/Kh%C3%A1ch%20S%E1%BA%A1n-%E1%BB%9F-t%E1%BA%A1i-tp.-h%E1%BB%93-ch%C3%AD-minh-%28tphcm%29'
+    //'https://trangvangvietnam.com/cateprovinces/127160/Kh%C3%A1ch%20S%E1%BA%A1n-%E1%BB%9F-t%E1%BA%A1i-tp.-h%E1%BB%93-ch%C3%AD-minh-%2528tphcm%2529
+    var options = {
+      url: url,
+      headers: headers,
+      transform: function(body) {
+        return cheerio.load(body)
+      },
+    }
+    let $ = await rp(options)
+    // calc next page
+    let paging = $('#paging a')
+    let maxPage = paging
+      .eq(paging.length - 2)
+      .text()
+      .trim()
+    // log(maxPage)
+    return Array.from({length: maxPage}, (_, i) => i + 1)
+  } catch (error) {
+    log(error.message)
+    appendFile('log.error.txt', JSON.stringify(category) + '\r\n')
   }
-  let $ = await rp(options)
-  // calc next page
-  let paging = $('#paging a')
-  let maxPage = paging
-    .eq(paging.length - 2)
-    .text()
-    .trim()
-  //log(maxPage)
-  return Array.from({length: maxPage}, (_, i) => i + 1)
 }
 // Test fetch mails
 // var tradeUrl = cfg.ttvnTradeUrl,
 //   place = '-%E1%BB%9F-t%E1%BA%A1i-tp.-h%E1%BB%93-ch%C3%AD-minh-%28tphcm%29',
 //   category = {
 //     name: 'Khách Sạn',
-//     id: '127160',
+//     id: '127160-0',
 //   }
 // fetchMailsByCategoryOnePageOfPlace(tradeUrl, category, place)
 // fetchMaxPageNumberMailByCatagoryOfPlace(tradeUrl, category, place)
@@ -263,218 +283,18 @@ async function delay(ms) {
     setTimeout(resolve, ms)
   })
 }
-var b = [
-  {
-    name: 'Bật Lửa/Hộp Quẹt - Sản Xuất và Bán Buôn',
-    id: '142400',
-  },
-  {
-    name: 'Bạt Nhựa - Bạt Che Nắng - Bạt Che Mưa',
-    id: '42010',
-  },
-  {
-    name: 'Vải Bạt Nông Nghiệp (Bạt Hái Cà Phê - Bạt Phơi Nông Sản -.)',
-    id: '492427',
-  },
-  {
-    name: 'Nhà Lều Bạt',
-    id: '488113',
-  },
-  {
-    name: 'Bạt Phủ Xe Máy - Bạt Phủ Ô Tô',
-    id: '489319',
-  },
-  {
-    name: 'Bể Bơi - Hồ Bơi - Thiết Bị Và Dịch Vụ Lắp Đặt',
-    id: '230660',
-  },
-  {
-    name: 'Bê Tông (Cọc - ống Cống - Dầm -.) - Công Ty Sản Xuất và Cung Cấp',
-    id: '67060',
-  },
-  {
-    name: 'Cọc Bê Tông Ly Tâm',
-    id: '491959',
-  },
-  {
-    name: 'Bê Tông Tươi - Bê Tông Thương Phẩm',
-    id: '67210',
-  },
-  {
-    name: 'Cọc Bê Tông Cốt Thép',
-    id: '485974',
-  },
-  {
-    name: 'ống cống bê tông',
-    id: '485971',
-  },
-  {
-    name: 'Bê Tông Chịu Lửa - Chịu Nhiệt',
-    id: '485977',
-  },
-  {
-    name: 'Bê Tông - Máy Móc và Thiết Bị',
-    id: '67180',
-  },
-  {
-    name: 'Trạm Trộn Bê Tông & Thiết Bị Phụ Trợ',
-    id: '485989',
-  },
-  {
-    name: 'Bơm Bê Tông',
-    id: '484456',
-  },
-  {
-    name: 'Máy Trộn Bê Tông',
-    id: '485986',
-  },
-  {
-    name: 'Xe Trộn Bê Tông',
-    id: '485992',
-  },
-  {
-    name: 'Bếp Điện - Bếp Từ - Bếp Hồng Ngoại - Nhập Khẩu & Phân Phối',
-    id: '488851',
-  },
-  {
-    name: 'Bếp Gas (Đơn - Đôi - Hồng Ngoại - Âm) - Bán Buôn và Bán Lẻ Bếp Gas',
-    id: '302350',
-  },
-  {
-    name: 'Bếp Gas - Linh - Phụ Kiện Bếp Gas',
-    id: '113070',
-  },
-  {
-    name: 'Van gas - Dây Dẫn Gas - Đồng Hồ Gas',
-    id: '489211',
-  },
-  {
-    name: 'Bếp Gas - Nhà Sản Xuất Bếp',
-    id: '486811',
-  },
-  {
-    name: 'Bếp Nướng BBQ - Bếp Nướng Than Hoa',
-    id: '492052',
-  },
-  {
-    name: 'Bia - Nhà Sản Xuất',
-    id: '35410',
-  },
-  {
-    name: 'Bia - Nhập Khẩu và Phân Phối',
-    id: '27160',
-  },
-  {
-    name: 'Bida - Dụng Cụ Bida',
-    id: '28610',
-  },
-  {
-    name: 'Bình Nước Nóng - Máy Nước Nóng',
-    id: '256360',
-  },
-  {
-    name: 'Bít Tất (Tất Nam - Nữ - Trẻ Em -..) - Sản Xuất và Kinh Doanh',
-    id: '220210',
-  },
-  {
-    name: 'Bọ Nhựa',
-    id: '491029',
-  },
-  {
-    name: 'Bô-Linh',
-    id: '33460',
-  },
-  {
-    name: 'Bobbin Gỗ (Rulo Gỗ)',
-    id: '490909',
-  },
-  {
-    name: 'Bobbin Nhựa - Lõi Nhựa - ống Chỉ Nhựa',
-    id: '489370',
-  },
-  {
-    name: 'Bốc Xếp Hàng Hóa - Bằng Xe Nâng - Xe Cẩu',
-    id: '226360',
-  },
-  {
-    name: 'Bơi - Dạy Bơi',
-    id: '490765',
-  },
-  {
-    name: 'Bồn Nước - Nhà Sản Xuất và Cung Cấp Bồn Nước',
-    id: '488089',
-  },
-  {
-    name: 'Bồn Nước Inox',
-    id: '488494',
-  },
-  {
-    name: 'Bồn Nước Nhựa',
-    id: '488491',
-  },
-  {
-    name: 'Bóng Bay - Bong Bóng - Sản xuất và Kinh doanh',
-    id: '471190',
-  },
-  {
-    name: 'Bóng Bay - Bong Bóng - Trang Trí',
-    id: '472195',
-  },
-  {
-    name: 'Bông Gòn Công Nghiệp - Gòn Bi - Gòn Tấm - Gòn Cuộn -',
-    id: '72060',
-  },
-  {
-    name: 'Bông Y Tế - Nhà Sản Xuất',
-    id: '488734',
-  },
-  {
-    name: 'Bột Cá',
-    id: '491083',
-  },
-  {
-    name: 'Bột Đá',
-    id: '486211',
-  },
-  {
-    name: 'Bột Giấy',
-    id: '486208',
-  },
-  {
-    name: 'Bột Gỗ (Sản Xuất Giấy - Nhựa Gỗ -..)',
-    id: '488269',
-  },
-  {
-    name: 'Bột Màu - Bột Màu Công Nghiệp',
-    id: '488410',
-  },
-  {
-    name: 'Bột Mì - Bột Ngô - Năng - Gạo - Nếp',
-    id: '104760',
-  },
-  {
-    name: 'Bột Nhang - Bột Làm Nhang',
-    id: '491218',
-  },
-  {
-    name: 'Bút - Sản Xuất và Kinh Doanh',
-    id: '488200',
-  },
-  {
-    name: 'Bưu Chính - Các Dịch Vụ Bưu Chính',
-    id: '72610',
-  },
-  {
-    name: 'Bưu Điện',
-    id: '189130',
-  },
-]
+function random(){
+  var items = Array(1111,1234,2000,500,3210,4321,1000,2134,111,555,777,888,999);
+  item = items[Math.floor(Math.random()*items.length)];
+  log(item)
+  return item
+}
 async function fetchMailsByLetter(letter) {
   let categories = await fetchCategoriesByLetterAllPages(url, letter)
   // log(categories)
   let mails = []
   for (let i = 0; i < categories.length; i++) {
-    await delay(2000)
+    await delay(random())
     let mail = await fetchMailsByCategoryAllPagesOfPlace(tradeUrl, categories[i], place)
     mails.push(mail)
     //log(mail)
@@ -482,15 +302,15 @@ async function fetchMailsByLetter(letter) {
   //log('Done')
   //log(mails)
   mails = [].concat(...mails)
-  log('[Letter] Before filter mails.length=%s', mails.length)
+  log('[%s] Before filter mails.length=%s', letter, mails.length)
   mails = [...new Set(mails)]
-  log('[Letter] After filter mails.length=%s', mails.length)
+  log('[%s] After filter mails.length=%s', letter, mails.length)
   await writeFile(letter + '_All_Mails.txt', mails.toString().replace(/,/g, '\r\n'))
 }
 // fetchMailsByLetter('A')
 async function fetchMailsByLetters() {
   for (let i = 0; i < letters.length; i++) {
-    delay(30)
+    delay(random())
     await fetchMailsByLetter(letters[i])
   }
 }

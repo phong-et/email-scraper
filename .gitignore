@@ -17,6 +17,8 @@ yp/*
 tvvn/tvvn.cfg
 tvvn/test/*
 tvvn/mails/*
+tvvn/log.error.txt
+tvvn/mails_1
 # Editor directories and files
 .idea
 .vscode
