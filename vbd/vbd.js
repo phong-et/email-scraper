@@ -191,7 +191,7 @@ async function fetchMailsByCategoriesOfPlace(categoriesUrl, tradeUrl, place, lim
   if (limitedCategories) categories.length = limitedCategories
   for (let i = 0; i < categories.length; i++) {
     await delay(random())
-    let mail = await fetchMailsByCategoryAllPagesOfPlace(tradeUrl, categories[i], place, 2)
+    let mail = await fetchMailsByCategoryAllPagesOfPlace(tradeUrl, categories[i], place)
     mails.push(mail)
     //log(mail)
   }
@@ -203,4 +203,4 @@ async function fetchMailsByCategoriesOfPlace(categoriesUrl, tradeUrl, place, lim
   log('[%s] After filter mails.length=%s', 'A', mails.length)
   await writeFile('A' + '_All_Mails.txt', mails.toString().replace(/,/g, '\r\n'))
 }
-fetchMailsByCategoriesOfPlace(cfg.categoriesUrl, cfg.tradeUrl, '02', 2)
+fetchMailsByCategoriesOfPlace(cfg.categoriesUrl, cfg.tradeUrl, '02')
