@@ -184,7 +184,7 @@ async function fetchMailsByCategoryAllPagesOfPlace(url, category, place) {
   try {
     return await fetchMaxPageNumberMailByCatagoryOfPlace(url, category, place).then(async pages => {
       log(JSON.stringify(category))
-      //log(pages)
+      log(pages)
       let mails = []
       for (let i = 0; i < pages.length; i++) {
         await delay(2000)
@@ -286,7 +286,7 @@ async function delay(ms) {
 function random(){
   var items = Array(1111,1234,2000,500,3210,4321,1000,2134,111,555,777,888,999);
   item = items[Math.floor(Math.random()*items.length)];
-  log(item)
+  //log(item)
   return item
 }
 async function fetchMailsByLetter(letter) {

@@ -19,6 +19,9 @@ tvvn/test/*
 tvvn/mails/*
 tvvn/log.error.txt
 tvvn/mails_1
+vbd/vbd.cfg.js
+vbd/mails/*
+vbd/log.error.txt
 # Editor directories and files
 .idea
 .vscode
