@@ -179,7 +179,28 @@ async function fetchMailsByCategoryAllPagesOfPlace(url, category, place, limitte
     appendFile('log.error.txt', JSON.stringify(category) + '\r\n')
   }
 }
+// Test
+// fetchMailsByCategoryAllPagesOfPlace(cfg.tradeUrl, {name: 'Xây dựng - Dân dụng', id: 6970}, '02', 3).then(m => {
+//   log(m)
+// })
 
-fetchMailsByCategoryAllPagesOfPlace(cfg.tradeUrl, {name: 'Xây dựng - Dân dụng', id: 6970}, '02', 3).then(m => {
-  log(m)
-})
+async function fetchMailsByCategoriesOfPlace(categoriesUrl, tradeUrl, place, limittedCategories) {
+  let categories = await fetchCategories(categoriesUrl)
+  // log(categories)
+  let mails = []
+  if (limittedCategories) categories.length = limittedCategories
+  for (let i = 0; i < categories.length; i++) {
+    await delay(random())
+    let mail = await fetchMailsByCategoryAllPagesOfPlace(tradeUrl, categories[i], place, 2)
+    mails.push(mail)
+    //log(mail)
+  }
+  //log('Done')
+  //log(mails)
+  mails = [].concat(...mails)
+  log('[%s] Before filter mails.length=%s', 'A', mails.length)
+  mails = [...new Set(mails)]
+  log('[%s] After filter mails.length=%s', 'A', mails.length)
+  await writeFile('A' + '_All_Mails.txt', mails.toString().replace(/,/g, '\r\n'))
+}
+fetchMailsByCategoriesOfPlace(cfg.categoriesUrl, cfg.tradeUrl, '02', 2)
