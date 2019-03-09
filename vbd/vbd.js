@@ -152,13 +152,13 @@ async function fetchMailsByCategoryOnePageOfPlace(url, category, place, page) {
 }
 // Test
 //fetchMailsByCategoryOnePageOfPlace(cfg.tradeUrl, {name: 'Xây dựng - Dân dụng', id: 6970}, '02', 1)
-async function fetchMailsByCategoryAllPagesOfPlace(url, category, place, limittedPage) {
+async function fetchMailsByCategoryAllPagesOfPlace(url, category, place, limitedPage) {
   try {
     return await fetchMaxPageNumberMailByCatagoryOfPlace(url, category, place).then(async pages => {
       log(JSON.stringify(category))
       log(pages)
       let mails = []
-      if (limittedPage) pages.length = limittedPage
+      if (limitedPage) pages.length = limitedPage
       for (let i = 0; i < pages.length; i++) {
         await delay(random())
         let mail = await fetchMailsByCategoryOnePageOfPlace(url, category, place, pages[i])
@@ -184,11 +184,11 @@ async function fetchMailsByCategoryAllPagesOfPlace(url, category, place, limitte
 //   log(m)
 // })
 
-async function fetchMailsByCategoriesOfPlace(categoriesUrl, tradeUrl, place, limittedCategories) {
+async function fetchMailsByCategoriesOfPlace(categoriesUrl, tradeUrl, place, limitedCategories) {
   let categories = await fetchCategories(categoriesUrl)
   // log(categories)
   let mails = []
-  if (limittedCategories) categories.length = limittedCategories
+  if (limitedCategories) categories.length = limitedCategories
   for (let i = 0; i < categories.length; i++) {
     await delay(random())
     let mail = await fetchMailsByCategoryAllPagesOfPlace(tradeUrl, categories[i], place, 2)
